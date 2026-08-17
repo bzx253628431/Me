@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <!-- 强制浏览器不缓存，永远拉取最新代码 -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  
   <title>TRENDLAB Gallery</title>
   
   <!-- Tailwind CSS -->
@@ -16,20 +22,18 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    /* 隐藏滚动条但保留滚动功能 */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
 <body class="bg-slate-50 text-gray-800 overflow-hidden overscroll-none m-0 p-0 fixed inset-0">
 
-  <!-- React 挂载点 -->
   <div id="root" class="w-full h-full"></div>
 
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef, Component } = React;
 
-    // --- 🚨 图标组件库 (替换原 Lucide 包，确保 HTML 单文件纯净运行) ---
+    // --- Icon Components ---
     const IconSearch = (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
     const IconPlus = (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
     const IconEdit3 = (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
@@ -49,10 +53,12 @@
     const IconChevronRight = (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m9 18 6-6-6-6"/></svg>;
     const IconChevronsLeft = (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>;
     const IconChevronsRight = (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/></svg>;
+    const IconLoader = (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>;
 
-    // 🚨 专属 Supabase 凭证
+    // SUPABASE CREDENTIALS
     const SUPABASE_URL = 'https://xumvhmaenapkqpsukcnn.supabase.co'; 
     const SUPABASE_ANON_KEY = 'sb_publishable_G-dTg65rJC-_34TrO4Uftw_KmK36r3N';
+    const BUCKET_NAME = 'gallery-images'; 
 
     const apiHeaders = {
       'apikey': SUPABASE_ANON_KEY,
@@ -86,28 +92,65 @@
       });
     };
 
-    const compressImage = (file) => {
+    // ✨ 绝对无 Base64 的压缩方法：改用 URL.createObjectURL，彻底杜绝数据转换污染
+    const compressImageToBlob = (file) => {
       return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 1200; 
-            let scaleSize = 1;
-            if (img.width > MAX_WIDTH) scaleSize = MAX_WIDTH / img.width;
-            canvas.width = img.width * scaleSize;
-            canvas.height = img.height * scaleSize;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/jpeg', 0.85)); 
-          };
-          img.onerror = (err) => reject(err);
-          img.src = e.target.result;
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file); // 使用真实的二进制对象链接，不再用 FileReader
+        
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl); // 释放内存
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1600; 
+          let scaleSize = 1;
+          if (img.width > MAX_WIDTH) scaleSize = MAX_WIDTH / img.width;
+          canvas.width = img.width * scaleSize;
+          canvas.height = img.height * scaleSize;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          // 强制输出二进制 Blob 数据
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Canvas to Blob failed'));
+          }, 'image/jpeg', 0.85);
         };
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(file);
+        
+        img.onerror = (err) => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error('Image load failed'));
+        };
+        
+        img.src = objectUrl;
       });
+    };
+
+    // 上传真实的二进制 Blob 到 Supabase Storage
+    const uploadImageToSupabase = async (blob) => {
+      const fileName = `${generateUUID()}.jpg`;
+      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${BUCKET_NAME}/${fileName}`;
+      
+      const res = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'image/jpeg',
+        },
+        body: blob
+      });
+
+      if (!res.ok) {
+        let errorText = await res.text();
+        try { 
+          const errObj = JSON.parse(errorText); 
+          errorText = errObj.message || errorText;
+        } catch(e) {}
+        throw new Error(errorText); // 将真实的错误抛出到界面上
+      }
+
+      return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${fileName}`;
     };
 
     const ITEMS_PER_PAGE = 10; 
@@ -127,14 +170,14 @@
           return (
             <div className="absolute inset-0 bg-red-50 flex flex-col items-center justify-center p-6 text-red-900 z-[100]">
               <IconAlertTriangle className="w-16 h-16 text-red-500 mb-4" />
-              <h1 className="text-2xl font-bold mb-2">程序渲染崩溃</h1>
-              <p className="mb-6 text-sm text-red-700">数据库返回了预料之外的数据格式，请截图发给开发者。</p>
+              <h1 className="text-2xl font-bold mb-2">Rendering Crash</h1>
+              <p className="mb-6 text-sm text-red-700">Please screenshot and send to the developer.</p>
               <div className="bg-white p-4 rounded-xl shadow-lg border border-red-200 w-full max-w-3xl overflow-auto text-xs font-mono">
                 <p className="font-bold text-red-600 mb-2">{this.state.error?.toString()}</p>
                 <pre className="text-gray-600">{this.state.errorInfo?.componentStack}</pre>
               </div>
               <button onClick={() => window.location.reload()} className="mt-6 bg-red-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-700">
-                重新加载页面
+                Reload Page
               </button>
             </div>
           );
@@ -173,6 +216,8 @@
       const [activeProduct, setActiveProduct] = useState(null); 
       const [activeImageIndex, setActiveImageIndex] = useState(0); 
       const [editingProduct, setEditingProduct] = useState(null); 
+      const [isUploadingImage, setIsUploadingImage] = useState(false); 
+
       const [isShopEditOpen, setIsShopEditOpen] = useState(false);
       const [isCategoryEditOpen, setIsCategoryEditOpen] = useState(false);
 
@@ -228,13 +273,12 @@
         } catch (err) {
           console.error("Supabase API Error:", err);
           setDbStatus('Error');
-          showToast('DB Connection Failed.');
+          showToast('Database connection failed.');
           if (products.length === 0) setProducts(PRESET_PRODUCTS); 
         }
       };
 
       useEffect(() => { fetchSupabaseData(); }, []);
-
       useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedCategory]);
 
       const safeCategories = Array.isArray(dynamicCategories) ? dynamicCategories : [];
@@ -329,7 +373,7 @@
           if (!res.ok) throw new Error('API Error');
           setShopInfo(newInfo);
           setIsShopEditOpen(false);
-          showToast('Banner Updated');
+          showToast('Store Banner Updated');
         } catch (err) {
           console.error(err);
           showToast('Update Failed');
@@ -339,9 +383,11 @@
       const closeEditModal = () => {
         setEditingProduct(null);
         setSaveError(null);
+        setIsUploadingImage(false);
       };
 
       const handleSaveProduct = async (productData) => {
+        if (isUploadingImage) return; 
         try {
           setSaveError(null); 
           showToast('Saving to database...');
@@ -375,7 +421,7 @@
         } catch (err) {
           console.error("Save product error:", err);
           setSaveError(err.message); 
-          showToast('Save Failed, check details.');
+          showToast('Save failed, check details.');
         }
       };
 
@@ -388,43 +434,60 @@
             headers: apiHeaders
           });
           if (!res.ok) throw new Error('Delete Error');
-          showToast('Item Deleted');
+          showToast('Item deleted');
           setDeleteConfirmId(null);
           fetchSupabaseData(); 
         } catch (err) {
           console.error("Delete error:", err);
-          showToast('Delete Failed');
+          showToast('Delete failed');
           setDeleteConfirmId(null);
         }
       };
 
       const handleImageFiles = async (files) => {
         if (!files || files.length === 0) return;
-        showToast(`Processing ${files.length} image(s)...`);
         
-        const newBase64Images = [];
+        setIsUploadingImage(true);
+        setSaveError(null);
+        showToast(`Processing and uploading ${files.length} image(s)...`);
+        
+        const newImageUrls = [];
+        let uploadErrors = 0;
+        let lastErrorMessage = "";
+
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           if (file.type.startsWith('image/')) {
             try {
-              const compressedDataUrl = await compressImage(file);
-              newBase64Images.push(compressedDataUrl);
+              const blob = await compressImageToBlob(file);
+              const publicUrl = await uploadImageToSupabase(blob);
+              newImageUrls.push(publicUrl);
             } catch (err) {
-              console.error("Failed to process image", err);
+              console.error("Image processing/upload failed:", err);
+              uploadErrors++;
+              lastErrorMessage = err.message;
             }
           }
         }
 
         setEditingProduct(prev => {
           const currentImages = prev.images || [];
-          const updatedImages = [...currentImages, ...newBase64Images];
+          const updatedImages = [...currentImages, ...newImageUrls];
           return {
             ...prev,
             images: updatedImages,
             mainImage: updatedImages[0] || '' 
           };
         });
-        showToast('Images added successfully!');
+
+        setIsUploadingImage(false);
+
+        if (uploadErrors > 0) {
+          setSaveError(`Failed to upload ${uploadErrors} image(s). Reason: ${lastErrorMessage}. Check Supabase Storage Policies.`);
+          showToast(`Upload completed with errors.`);
+        } else if (newImageUrls.length > 0) {
+          showToast('All images uploaded successfully!');
+        }
       };
 
       const handlePaste = (e) => {
@@ -459,7 +522,7 @@
                   <div className="bg-red-100 p-2 rounded-full text-red-600">
                     <IconAlertTriangle className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900">Delete Item?</h3>
+                  <h3 className="text-lg font-bold text-gray-900">Confirm Delete?</h3>
                 </div>
                 <p className="text-gray-600 text-sm mb-6 leading-relaxed">
                   Are you sure you want to delete this product? This action cannot be undone.
@@ -476,12 +539,13 @@
             </div>
           )}
 
-          <div className="bg-gray-900 text-gray-300 text-xs py-2 px-4 flex justify-between items-center flex-shrink-0 z-40 shadow-sm">
+          {/* 🚨 核心防沉迷标记区域：如果你看不到 v2.0 Cloud，说明你在看旧网页！ */}
+          <div className="bg-gray-900 text-gray-300 text-xs py-2 px-4 flex justify-between items-center flex-shrink-0 z-40 shadow-sm border-b-2 border-emerald-500">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1.5 bg-black/30 px-2 py-1 rounded">
-                {dbStatus === 'Connected' ? <IconDatabase className="w-3.5 h-3.5 text-green-400" /> : <IconAlertCircle className="w-3.5 h-3.5 text-red-400" />}
-                <span className={dbStatus === 'Connected' ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
-                  DB: {dbStatus}
+                {dbStatus === 'Connected' ? <IconDatabase className="w-3.5 h-3.5 text-emerald-400" /> : <IconAlertCircle className="w-3.5 h-3.5 text-red-400" />}
+                <span className={dbStatus === 'Connected' ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                  Database: {dbStatus} <span className="text-white ml-1">(v2.0 Cloud)</span>
                 </span>
               </span>
               <span className="hidden sm:inline">
@@ -495,7 +559,7 @@
               }`}
             >
               {isAdmin ? <IconShieldCheck className="w-3.5 h-3.5" /> : <IconShield className="w-3.5 h-3.5" />}
-              {isAdmin ? 'Exit Edit Mode' : 'Enter Edit Mode'}
+              {isAdmin ? 'Exit Edit Mode' : 'Enter Admin Mode'}
             </button>
           </div>
 
@@ -524,7 +588,7 @@
                   className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 border border-white/40 transition-all shadow-lg"
                 >
                   <IconEdit3 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Edit</span>
+                  <span className="hidden sm:inline">Edit Banner</span>
                 </button>
               )}
             </div>
@@ -556,7 +620,7 @@
                     className="mt-3 w-full flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 px-1 py-2 md:px-3 md:py-2 text-[10px] md:text-xs font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-200 rounded-xl transition-all border border-dashed border-gray-300"
                   >
                     <IconEdit3 className="w-3.5 h-3.5" /> 
-                    <span className="text-center md:text-left">Edit</span>
+                    <span className="text-center md:text-left">Edit Categories</span>
                   </button>
                 )}
               </div>
@@ -572,7 +636,7 @@
                       <input 
                         autoFocus
                         type="text" 
-                        placeholder="Search..." 
+                        placeholder="Search color or name..." 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full h-full bg-gray-50 border border-gray-300 text-xs pl-7 pr-7 rounded-full focus:outline-none focus:ring-1 focus:ring-gray-900 transition-all shadow-sm placeholder-gray-400"
@@ -649,7 +713,7 @@
                   <div className="rounded-2xl p-10 sm:p-16 text-center text-gray-400 mt-4 border border-dashed border-gray-200">
                     <IconImage className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 text-gray-200" />
                     <p className="text-sm sm:text-base font-medium text-gray-500">
-                      {products.length === 0 ? "No items found." : "No items match your search."}
+                      {products.length === 0 ? "No items available." : "No matching items found."}
                     </p>
                   </div>
                 ) : (
@@ -700,7 +764,7 @@
             </main>
           </div>
 
-          {/* 详情页 Modal */}
+          {/* Detail View Modal */}
           {activeProduct && (
             <div className="fixed inset-0 z-[60] flex items-start md:items-center justify-center bg-black/95 backdrop-blur-md animate-fade-in overflow-y-auto [-webkit-overflow-scrolling:touch] p-0 md:p-6">
               <button onClick={() => setActiveProduct(null)} className="fixed top-3 right-3 sm:top-4 sm:right-4 z-[70] bg-black/50 hover:bg-black/70 text-white p-2.5 rounded-full transition-all backdrop-blur-sm">
@@ -727,12 +791,12 @@
                     <h2 className="text-xl md:text-2xl font-bold text-gray-900 leading-snug mb-3">{activeProduct.name}</h2>
                     <div className="mb-6">
                       <span className={`inline-block text-xs px-2.5 py-1 rounded-md font-bold border ${activeProduct.shippingLocation === 'In Stock (Phnom Penh)' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-                        {activeProduct.shippingLocation === 'In Stock (Phnom Penh)' ? '🚀 In Stock (Phnom Penh)' : '✈️ Ships from China (10 Days Delivery)'}
+                        {activeProduct.shippingLocation === 'In Stock (Phnom Penh)' ? '🚀 In Stock (Phnom Penh)' : '✈️ Ships from China (approx. 10 days)'}
                       </span>
                     </div>
                     {Array.isArray(activeProduct.colors) && activeProduct.colors.length > 0 && (
                       <div className="mb-6">
-                        <h3 className="text-sm font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2">Color Options</h3>
+                        <h3 className="text-sm font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2">Available Colors</h3>
                         <div className="flex flex-wrap gap-2">
                           {activeProduct.colors.map((color, idx) => <span key={idx} className="bg-gray-50 text-gray-800 text-sm px-4 py-2 rounded-lg border border-gray-200">{color}</span>)}
                         </div>
@@ -748,7 +812,7 @@
                     )}
                     {activeProduct.description && (
                       <div className="mb-6">
-                        <h3 className="text-sm font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2">Details</h3>
+                        <h3 className="text-sm font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2">Product Details</h3>
                         <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 p-4 rounded-xl">{activeProduct.description}</p>
                       </div>
                     )}
@@ -763,19 +827,30 @@
             <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onPaste={handlePaste}>
               <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl relative">
                 <div className="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
-                  <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2"><IconEdit3 className="w-5 h-5" />{editingProduct.id ? 'Edit Item' : 'Upload New Item'}</h2>
+                  <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <IconEdit3 className="w-5 h-5" />
+                    {editingProduct.id ? 'Edit Item' : 'Upload New Item'}
+                  </h2>
                   <button onClick={closeEditModal} className="text-gray-400 hover:text-gray-700 bg-white p-1.5 rounded-md shadow-sm border border-gray-200"><IconX className="w-4 h-4 sm:w-5 sm:h-5" /></button>
                 </div>
-                <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+                <div className="p-4 sm:p-6 overflow-y-auto flex-1 relative">
+                  {/* Loading Overlay */}
+                  {isUploadingImage && (
+                    <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] z-20 flex flex-col items-center justify-center text-gray-900 rounded-xl">
+                       <IconLoader className="w-8 h-8 animate-spin mb-2" />
+                       <span className="font-bold text-sm mt-2">Uploading to Supabase Storage...</span>
+                    </div>
+                  )}
+
                   {saveError && (
                     <div className="mb-6 bg-red-50 border border-red-200 p-4 rounded-xl text-red-700 shadow-sm">
-                      <h3 className="text-sm font-bold mb-2 flex items-center gap-2"><IconAlertTriangle className="w-4 h-4" />Database Schema Error</h3>
-                      <p className="text-xs mb-2 leading-relaxed opacity-90">Supabase rejected the save. Please make sure you have run the required SQL in Supabase:</p>
-                      <div className="bg-red-100 p-3 rounded-lg overflow-x-auto text-[11px] font-mono whitespace-pre-wrap select-all">ALTER TABLE products ADD COLUMN IF NOT EXISTS shipping_location TEXT;<br/><br/>{saveError}</div>
+                      <h3 className="text-sm font-bold mb-2 flex items-center gap-2"><IconAlertTriangle className="w-4 h-4" />Upload Error</h3>
+                      <p className="text-xs mb-2 leading-relaxed opacity-90">{saveError}</p>
                     </div>
                   )}
                   <form id="productForm" onSubmit={(e) => {
                     e.preventDefault();
+                    if(isUploadingImage) return; 
                     const formData = new FormData(e.target);
                     const colorStr = formData.get('colors') || '';
                     const sizeStr = formData.get('sizes') || '';
@@ -783,16 +858,16 @@
                     handleSaveProduct({...editingProduct, name: formData.get('name'), category: formData.get('category'), shippingLocation: formData.get('shippingLocation'), colors: colorStr.split(',').map(s => s.trim()).filter(Boolean), sizes: sizeStr.split(',').map(s => s.trim()).filter(Boolean), description: formData.get('description')});
                   }} className="space-y-4 sm:space-y-6 text-sm">
                     <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-4 sm:p-5 relative">
-                      <h3 className="text-xs sm:text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><IconImage className="w-4 h-4" /> Image Manager (First is Main Image)</h3>
+                      <h3 className="text-xs sm:text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><IconImage className="w-4 h-4" /> Image Manager (First image is cover)</h3>
                       {Array.isArray(editingProduct.images) && editingProduct.images.length > 0 && (
                         <div className="flex flex-wrap gap-2 sm:gap-3 mb-4">
                           {editingProduct.images.map((img, idx) => (
-                            <div key={idx} className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border border-gray-200 group">
+                            <div key={idx} className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border border-gray-200 group bg-white">
                               <img src={img} alt={`Upload ${idx}`} className="w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                 <button type="button" onClick={() => removeImage(idx)} className="text-white bg-red-500 rounded-full p-1 sm:p-1.5"><IconTrash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
                               </div>
-                              {idx === 0 && <span className="absolute top-1 left-1 bg-gray-900 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded">Main</span>}
+                              {idx === 0 && <span className="absolute top-1 left-1 bg-gray-900 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded shadow-sm">Cover</span>}
                             </div>
                           ))}
                         </div>
@@ -800,16 +875,16 @@
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <input type="file" multiple accept="image/*" ref={fileInputRef} className="hidden" onChange={(e) => handleImageFiles(e.target.files)} />
                         <input type="file" webkitdirectory="true" directory="true" multiple ref={folderInputRef} className="hidden" onChange={(e) => handleImageFiles(e.target.files)} />
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1.5 hover:bg-gray-100 transition-colors text-[10px] sm:text-xs font-medium"><IconImagePlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Select Images</button>
-                        <button type="button" onClick={() => folderInputRef.current?.click()} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1.5 hover:bg-gray-100 transition-colors text-[10px] sm:text-xs font-medium"><IconFolderUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Upload Folder</button>
+                        <button type="button" disabled={isUploadingImage} onClick={() => fileInputRef.current?.click()} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1.5 hover:bg-gray-100 transition-colors text-[10px] sm:text-xs font-medium disabled:opacity-50"><IconImagePlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Select Files</button>
+                        <button type="button" disabled={isUploadingImage} onClick={() => folderInputRef.current?.click()} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1.5 hover:bg-gray-100 transition-colors text-[10px] sm:text-xs font-medium disabled:opacity-50"><IconFolderUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Upload Folder</button>
                       </div>
                       <p className="mt-3 text-[10px] sm:text-xs text-gray-500 flex items-center gap-1.5 bg-yellow-50 p-2 rounded-md border border-yellow-100 w-full">
-                        <span className="font-semibold text-yellow-700 hidden sm:inline">Tips:</span> 
-                        <span>You can directly press <kbd className="bg-white border border-gray-200 px-1 rounded shadow-sm">Ctrl+V</kbd> to paste images here.</span>
+                        <span className="font-semibold text-yellow-700 hidden sm:inline">Tip:</span> 
+                        <span>You can press <kbd className="bg-white border border-gray-200 px-1 rounded shadow-sm font-mono text-gray-600">Ctrl+V</kbd> to paste images here directly.</span>
                       </p>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">Item Name *</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1.5">Product Name *</label>
                       <input name="name" defaultValue={editingProduct.name} required className="w-full bg-white border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:ring-1 focus:ring-gray-900 focus:outline-none transition-all shadow-sm" />
                     </div>
                     <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -820,10 +895,10 @@
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1.5">Shipping & Delivery *</label>
+                        <label className="block text-xs font-bold text-gray-700 mb-1.5">Shipping From *</label>
                         <select name="shippingLocation" defaultValue={editingProduct.shippingLocation || 'In Stock (Phnom Penh)'} className="w-full bg-white border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:ring-1 focus:ring-gray-900 focus:outline-none shadow-sm text-xs sm:text-sm">
                           <option value="In Stock (Phnom Penh)">In Stock (Phnom Penh)</option>
-                          <option value="Ships from China (10 Days Delivery)">Ships from China (10 Days Delivery)</option>
+                          <option value="Ships from China (10 Days Delivery)">Ships from China (approx. 10 days)</option>
                         </select>
                       </div>
                     </div>
@@ -845,7 +920,9 @@
                 </div>
                 <div className="p-4 sm:p-5 border-t border-gray-100 flex gap-3 bg-gray-50 rounded-b-2xl">
                   <button type="button" onClick={closeEditModal} className="flex-1 bg-white border border-gray-300 py-2.5 sm:py-3 rounded-xl text-gray-700 font-bold hover:bg-gray-100 transition-colors shadow-sm">Cancel</button>
-                  <button form="productForm" type="submit" className="flex-1 bg-gray-900 hover:bg-black text-white py-2.5 sm:py-3 rounded-xl font-bold shadow-lg transition-all">Save Item</button>
+                  <button form="productForm" type="submit" disabled={isUploadingImage} className="flex-1 bg-gray-900 hover:bg-black text-white py-2.5 sm:py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isUploadingImage ? 'Processing...' : 'Save Item'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -866,7 +943,7 @@
                   ))}
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); const newCat = e.target.newCategory.value.trim(); if (newCat && !safeCategories.includes(newCat)) { const newList = [...safeCategories, newCat]; setDynamicCategories(newList); handleSaveCategories(newList); e.target.reset(); } }} className="flex gap-2">
-                  <input name="newCategory" placeholder="New category name..." required className="flex-1 bg-white border border-gray-300 rounded-lg p-2 sm:p-2.5 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-gray-900" />
+                  <input name="newCategory" placeholder="Enter new category name..." required className="flex-1 bg-white border border-gray-300 rounded-lg p-2 sm:p-2.5 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-gray-900" />
                   <button type="submit" className="bg-gray-900 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold">Add</button>
                 </form>
               </div>
@@ -878,11 +955,11 @@
             <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
               <div className="bg-white rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-2xl relative">
                 <button onClick={() => setIsShopEditOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><IconX className="w-5 h-5" /></button>
-                <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-4">Edit Banner Info</h2>
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-4">Edit Store Banner</h2>
                 <form onSubmit={(e) => { e.preventDefault(); const formData = new FormData(e.target); const newInfo = { name: formData.get('name'), notice: formData.get('notice'), banner: formData.get('banner') }; handleSaveShopInfo(newInfo); }} className="space-y-4 text-xs sm:text-sm">
                   <div><label className="block font-bold text-gray-700 mb-1">Gallery Name</label><input name="name" defaultValue={shopInfo.name} required className="w-full border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:outline-none focus:ring-1 focus:ring-gray-900" /></div>
-                  <div><label className="block font-bold text-gray-700 mb-1">Notice / Description</label><input name="notice" defaultValue={shopInfo.notice} required className="w-full border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:outline-none focus:ring-1 focus:ring-gray-900" /></div>
-                  <div><label className="block font-bold text-gray-700 mb-1">Background Image URL</label><input name="banner" defaultValue={shopInfo.banner} required className="w-full border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:outline-none focus:ring-1 focus:ring-gray-900" /></div>
+                  <div><label className="block font-bold text-gray-700 mb-1">Subtitle / Notice</label><input name="notice" defaultValue={shopInfo.notice} required className="w-full border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:outline-none focus:ring-1 focus:ring-gray-900" /></div>
+                  <div><label className="block font-bold text-gray-700 mb-1">Background Image (URL)</label><input name="banner" defaultValue={shopInfo.banner} required className="w-full border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:outline-none focus:ring-1 focus:ring-gray-900" /></div>
                   <button type="submit" className="w-full bg-gray-900 text-white py-2.5 sm:py-3 rounded-xl font-bold mt-2">Save Changes</button>
                 </form>
               </div>
@@ -894,7 +971,7 @@
             <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
               <div className="bg-white rounded-2xl w-full max-w-sm p-5 sm:p-6 shadow-2xl relative">
                 <button onClick={() => setShowAdminPassModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><IconX className="w-5 h-5" /></button>
-                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-6">Enter Edit Mode</h3>
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-6">Admin Verification</h3>
                 {saveError && <div className="mb-4 text-xs sm:text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">{saveError}</div>}
                 <form onSubmit={handleVerifyAdminPass} className="space-y-4">
                   <input type="password" placeholder="Enter password" value={adminPasswordInput} onChange={(e) => setAdminPasswordInput(e.target.value)} className="w-full border border-gray-300 rounded-xl p-2.5 sm:p-3 text-sm focus:outline-none focus:ring-1 focus:ring-gray-900" />
@@ -916,4 +993,5 @@
   </script>
 </body>
 </html>
+
 
