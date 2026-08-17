@@ -2,27 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- 增加了 viewport-fit=cover 适配刘海屏，防止界面被安全区遮挡 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   
-  <!-- 强制浏览器不缓存 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   
-  <!-- ✨ 淘宝级优化 1：网络预连接，提前与数据库握手，大幅降低首屏延迟 -->
   <link rel="preconnect" href="https://xumvhmaenapkqpsukcnn.supabase.co" crossorigin />
   <link rel="dns-prefetch" href="https://xumvhmaenapkqpsukcnn.supabase.co" />
   
   <title>TRENDLAB Gallery</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- React & ReactDOM -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  
-  <!-- Babel for parsing JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
@@ -58,6 +52,7 @@
     const IconChevronsLeft = (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>;
     const IconChevronsRight = (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/></svg>;
     const IconLoader = (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>;
+    const IconChevronDown = (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m6 9 6 6 6-6"/></svg>; 
 
     // SUPABASE CREDENTIALS
     const SUPABASE_URL = 'https://xumvhmaenapkqpsukcnn.supabase.co'; 
@@ -79,16 +74,13 @@
       });
     };
 
-    // ✨ 淘宝级优化 2：拥有骨架屏和渐显动画的智能图片组件
     const OptimizedImage = ({ src, alt, className, style }) => {
       const [loaded, setLoaded] = useState(false);
       return (
         <React.Fragment>
-          {/* 骨架屏：图片没加载完时显示灰色闪烁框 */}
           {!loaded && (
             <div className={`absolute inset-0 bg-gray-200 animate-pulse ${className}`} style={style}></div>
           )}
-          {/* 真实图片：加载完后淡入显示，加入异步解码防卡顿 */}
           <img
             src={src}
             alt={alt}
@@ -111,7 +103,6 @@
           URL.revokeObjectURL(objectUrl); 
           try {
             const canvas = document.createElement('canvas');
-            // ✨ 淘宝级优化 3：调整为 1080px (超清水准，但体积减少 50%)
             const MAX_WIDTH = 1080; 
             let scaleSize = 1;
             if (img.width > MAX_WIDTH) scaleSize = MAX_WIDTH / img.width;
@@ -121,7 +112,6 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             
-            // 画质调至 0.80，肉眼无损但进一步压缩体积
             canvas.toBlob((blob) => {
               if (blob) resolve(blob);
               else reject(new Error('Canvas to Blob failed on this device'));
@@ -231,6 +221,8 @@
       const [searchQuery, setSearchQuery] = useState('');
       const [currentPage, setCurrentPage] = useState(1);
       
+      const [isAdminBarOpen, setIsAdminBarOpen] = useState(false);
+      
       const [shopInfo, setShopInfo] = useState({
         name: 'TRENDLAB Gallery',
         notice: 'Welcome to our latest product catalog.',
@@ -323,9 +315,9 @@
           let matchShipping = true;
           if (shippingFilter !== 'All') {
              const loc = String(p.shippingLocation || '').toLowerCase();
-             if (shippingFilter === 'In Stock (Phnom Penh)') {
+             if (shippingFilter === 'Phnom Penh') {
                  matchShipping = loc.includes('phnom penh');
-             } else if (shippingFilter === 'Ships from China (approx. 10 days)') {
+             } else if (shippingFilter === 'Send from China') {
                  matchShipping = loc.includes('china');
              }
           }
@@ -366,6 +358,7 @@
       const handleToggleAdmin = () => {
         if (isAdmin) {
           setIsAdmin(false);
+          setIsAdminBarOpen(false); 
           showToast('Switched to Visitor Mode');
         } else {
           setShowAdminPassModal(true);
@@ -597,10 +590,10 @@
       };
 
       return (
-        <div className="flex flex-col w-full h-full font-sans">
+        <div className="flex flex-col w-full h-full font-sans relative">
           
           {toastMsg && (
-            <div className="fixed top-5 left-1/2 transform -translate-x-1/2 z-[90] bg-gray-900/95 text-white px-5 py-2.5 rounded-full shadow-2xl text-sm flex items-center gap-2 backdrop-blur-sm animate-fade-in border border-gray-700 transition-all">
+            <div className="fixed top-12 left-1/2 transform -translate-x-1/2 z-[90] bg-gray-900/95 text-white px-5 py-2.5 rounded-full shadow-2xl text-sm flex items-center gap-2 backdrop-blur-sm animate-fade-in border border-gray-700 transition-all">
               <IconCheck className="w-4 h-4 text-green-400" />
               {toastMsg}
             </div>
@@ -630,30 +623,41 @@
             </div>
           )}
 
-          <div className="bg-gray-900 text-gray-300 text-xs py-2 px-4 flex justify-between items-center flex-shrink-0 z-40 shadow-sm border-b-2 border-emerald-500">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5 bg-black/30 px-2 py-1 rounded">
-                {dbStatus === 'Connected' ? <IconDatabase className="w-3.5 h-3.5 text-emerald-400" /> : <IconAlertCircle className="w-3.5 h-3.5 text-red-400" />}
-                <span className={dbStatus === 'Connected' ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
-                  Database: {dbStatus} <span className="text-white ml-1">(v2.8 Speed)</span>
+          {/* 隐藏式顶部抽屉 */}
+          <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out ${isAdminBarOpen ? 'translate-y-0' : '-translate-y-full'}`}>
+            <div className="bg-gray-900 text-gray-300 text-[10px] sm:text-xs py-3 px-4 sm:px-6 flex justify-between items-center shadow-lg border-b-2 border-emerald-500">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <span className="flex items-center gap-1 bg-black/30 px-2 py-1 sm:px-3 sm:py-1.5 rounded">
+                  {dbStatus === 'Connected' ? <IconDatabase className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" /> : <IconAlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />}
+                  <span className={dbStatus === 'Connected' ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                    <span className="hidden sm:inline">Database: </span>{dbStatus} <span className="text-gray-500 ml-1">(v2.12 Responsive)</span>
+                  </span>
                 </span>
-              </span>
-              <span className="hidden sm:inline">
-                Status: {isAdmin ? <strong className="text-white">Edit Mode</strong> : <span>Visitor Mode</span>}
-              </span>
+                <span className="hidden sm:inline">
+                  {isAdmin ? <strong className="text-white">Edit Mode Enabled</strong> : <span>Visitor</span>}
+                </span>
+              </div>
+              <button 
+                onClick={handleToggleAdmin}
+                className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all font-bold ${
+                  isAdmin ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-gray-700 hover:bg-gray-600 text-white'
+                }`}
+              >
+                {isAdmin ? <IconShieldCheck className="w-4 h-4" /> : <IconShield className="w-4 h-4" />}
+                <span>{isAdmin ? 'Exit Edit Mode' : 'Admin Login'}</span>
+              </button>
             </div>
-            <button 
-              onClick={handleToggleAdmin}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded transition-all font-medium ${
-                isAdmin ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
+            
+            <div 
+              onClick={() => setIsAdminBarOpen(!isAdminBarOpen)}
+              className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-14 h-6 bg-gray-900/90 backdrop-blur-md rounded-b-xl cursor-pointer shadow-md flex items-center justify-center border-b border-x border-emerald-500/50 hover:bg-black transition-colors"
             >
-              {isAdmin ? <IconShieldCheck className="w-3.5 h-3.5" /> : <IconShield className="w-3.5 h-3.5" />}
-              {isAdmin ? 'Exit Edit Mode' : 'Enter Admin Mode'}
-            </button>
+              <IconChevronDown className={`w-4 h-4 text-white transition-transform duration-300 ${isAdminBarOpen ? 'rotate-180' : ''}`} />
+            </div>
           </div>
 
-          <div className="relative w-full h-32 sm:h-48 lg:h-56 bg-gray-800 overflow-hidden flex-shrink-0 z-30">
+          {/* 横幅 */}
+          <div className="relative w-full h-28 sm:h-40 lg:h-48 bg-gray-800 overflow-hidden flex-shrink-0 z-30">
             <img 
               src={shopInfo.banner} 
               alt="Banner" 
@@ -667,17 +671,17 @@
                   <IconShoppingBag className="w-6 h-6 sm:w-8 sm:h-8" />
                 </div>
                 <div>
-                  <h1 className="text-lg sm:text-2xl md:text-3xl font-bold tracking-tight">{shopInfo.name || 'Store'}</h1>
-                  <p className="text-xs sm:text-sm text-gray-200 mt-1 max-w-lg line-clamp-1 opacity-90">{shopInfo.notice}</p>
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">{shopInfo.name || 'Store'}</h1>
+                  <p className="text-[11px] sm:text-sm text-gray-200 mt-1 max-w-lg line-clamp-1 opacity-90">{shopInfo.notice}</p>
                 </div>
               </div>
 
               {isAdmin && (
                 <button 
                   onClick={() => setIsShopEditOpen(true)}
-                  className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 border border-white/40 transition-all shadow-lg"
+                  className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-[11px] sm:text-sm flex items-center gap-1.5 border border-white/40 transition-all shadow-lg"
                 >
-                  <IconEdit3 className="w-3.5 h-3.5" />
+                  <IconEdit3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">Edit Banner</span>
                 </button>
               )}
@@ -686,15 +690,16 @@
 
           <div className="flex-1 w-full max-w-7xl mx-auto flex flex-row min-h-0 relative">
             
-            <aside className="w-[76px] sm:w-[100px] md:w-36 flex-shrink-0 border-r border-gray-200 bg-slate-50 overflow-y-auto no-scrollbar pt-4 pb-16 [-webkit-overflow-scrolling:touch]">
-              <div className="flex flex-col px-2 gap-1.5">
-                <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 text-center md:text-left md:px-2">CAT.</h3>
+            {/* ✨ 优化4：弹性侧边栏 (Responsive Sidebar) */}
+            <aside className="w-[76px] sm:w-[96px] md:w-36 lg:w-48 flex-shrink-0 border-r border-gray-200 bg-slate-50 overflow-y-auto no-scrollbar pt-4 pb-20 [-webkit-overflow-scrolling:touch]">
+              <div className="flex flex-col px-2 sm:px-3 gap-1.5 sm:gap-2">
+                <h3 className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 text-center md:text-left md:px-2">CAT.</h3>
                 
                 {allCategories.map((cat, idx) => (
                   <button
                     key={`cat-${idx}`}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`w-full px-1 py-3 md:px-3 md:py-2.5 rounded-xl text-xs font-bold leading-tight transition-all text-center md:text-left break-words ${
+                    className={`w-full px-1.5 py-3 md:px-4 md:py-3 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold leading-tight transition-all text-center md:text-left break-words ${
                       selectedCategory === cat 
                         ? 'bg-gray-900 text-white shadow-md' 
                         : 'bg-transparent text-gray-600 hover:bg-gray-200'
@@ -707,240 +712,243 @@
                 {isAdmin && (
                   <button 
                     onClick={() => setIsCategoryEditOpen(true)}
-                    className="mt-3 w-full flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 px-1 py-2 md:px-3 md:py-2 text-[10px] md:text-xs font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-200 rounded-xl transition-all border border-dashed border-gray-300"
+                    className="mt-4 w-full flex flex-col md:flex-row items-center justify-center md:justify-start gap-1.5 px-2 py-2.5 md:px-4 md:py-3 text-[10px] sm:text-xs md:text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-200 rounded-xl transition-all border border-dashed border-gray-300"
                   >
-                    <IconEdit3 className="w-3.5 h-3.5" /> 
-                    <span className="text-center md:text-left">Edit Categories</span>
+                    <IconEdit3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> 
+                    <span className="text-center md:text-left">Categories</span>
                   </button>
                 )}
               </div>
             </aside>
 
-            <main className="flex-1 min-w-0 flex flex-col bg-white">
+            <main className="flex-1 min-w-0 flex flex-col bg-white relative">
               
-              <div className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-100 flex-shrink-0">
-                
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 mr-2 pr-2">
-                  <div className={`transition-all duration-300 ease-in-out flex-shrink-0 ${isSearchExpanded ? 'w-[140px] sm:w-56' : 'w-7 sm:w-8'}`}>
+              <div className="flex items-center justify-between px-3 py-2.5 sm:px-5 sm:py-4 border-b border-gray-100 flex-shrink-0">
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full">
+                  <div className={`transition-all duration-300 ease-in-out flex-shrink-0 ${isSearchExpanded ? 'w-[140px] sm:w-56' : 'w-8 sm:w-10'}`}>
                     {isSearchExpanded ? (
-                      <div className="relative w-full h-7 sm:h-8 flex items-center animate-fade-in">
+                      <div className="relative w-full h-8 sm:h-10 flex items-center animate-fade-in">
                         <input 
                           autoFocus
                           type="text" 
                           placeholder="Search..." 
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full h-full bg-gray-50 border border-gray-300 text-xs pl-7 pr-7 rounded-full focus:outline-none focus:ring-1 focus:ring-gray-900 transition-all shadow-sm placeholder-gray-400"
+                          className="w-full h-full bg-gray-50 border border-gray-300 text-xs sm:text-sm pl-8 pr-8 sm:pl-10 sm:pr-10 rounded-full focus:outline-none focus:ring-1 focus:ring-gray-900 transition-all shadow-sm placeholder-gray-400"
                         />
-                        <IconSearch className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <IconSearch className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <button 
                           onClick={() => {
                             setIsSearchExpanded(false);
                             if(!searchQuery) setSearchQuery('');
                           }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 bg-gray-50"
+                          className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 bg-gray-50 p-1"
                         >
-                          <IconX className="w-3 h-3" />
+                          <IconX className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                         </button>
                       </div>
                     ) : (
                       <button 
                         onClick={() => setIsSearchExpanded(true)}
-                        className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-50 border border-gray-200 text-gray-600 rounded-full shadow-sm hover:bg-gray-100 transition-colors"
+                        className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-gray-50 border border-gray-200 text-gray-600 rounded-full shadow-sm hover:bg-gray-100 transition-colors"
                       >
-                        <IconSearch className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        <IconSearch className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </button>
                     )}
                   </div>
 
-                  <div className="h-4 w-px bg-gray-200 flex-shrink-0 mx-0.5"></div>
+                  <div className="h-5 sm:h-6 w-px bg-gray-200 flex-shrink-0 mx-1 sm:mx-2"></div>
 
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <button
-                      onClick={() => setShippingFilter(shippingFilter === 'In Stock (Phnom Penh)' ? 'All' : 'In Stock (Phnom Penh)')}
-                      className={`whitespace-nowrap px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all ${
-                        shippingFilter === 'In Stock (Phnom Penh)' 
+                      onClick={() => setShippingFilter(shippingFilter === 'Phnom Penh' ? 'All' : 'Phnom Penh')}
+                      className={`whitespace-nowrap px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-[11px] sm:text-xs md:text-sm font-bold transition-all ${
+                        shippingFilter === 'Phnom Penh' 
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm' 
                           : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'
                       }`}
                     >
-                      🚀 In stock (Phnom Penh)
+                      🚀 Phnom Penh
                     </button>
                     <button
-                      onClick={() => setShippingFilter(shippingFilter === 'Ships from China (approx. 10 days)' ? 'All' : 'Ships from China (approx. 10 days)')}
-                      className={`whitespace-nowrap px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all ${
-                        shippingFilter === 'Ships from China (approx. 10 days)' 
+                      onClick={() => setShippingFilter(shippingFilter === 'Send from China' ? 'All' : 'Send from China')}
+                      className={`whitespace-nowrap px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-[11px] sm:text-xs md:text-sm font-bold transition-all ${
+                        shippingFilter === 'Send from China' 
                           ? 'bg-blue-100 text-blue-800 border border-blue-200 shadow-sm' 
                           : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'
                       }`}
                     >
-                      ✈️ Ships from China (10 Days)
+                      ✈️ Send from China
                     </button>
                   </div>
-                </div>
-
-                <div className={`flex items-center flex-shrink-0 ${isSearchExpanded ? 'hidden sm:flex' : 'flex'}`}>
-                  {totalPages > 0 && (
-                    <div className="flex items-center gap-0.5 bg-gray-50 border border-gray-200 p-0.5 rounded-lg shadow-sm">
-                      <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="p-1 rounded text-gray-500 hover:bg-gray-200 disabled:opacity-30 transition-all">
-                        <IconChevronsLeft className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1 rounded text-gray-500 hover:bg-gray-200 disabled:opacity-30 transition-all">
-                        <IconChevronLeft className="w-3.5 h-3.5" />
-                      </button>
-                      <div className="flex items-center px-0.5 gap-0.5 hidden sm:flex">
-                        {getPageNumbers().map(pageNum => (
-                          <button key={pageNum} onClick={() => setCurrentPage(pageNum)} className={`w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-md text-[10px] font-bold transition-all ${currentPage === pageNum ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-200'}`}>
-                            {pageNum}
-                          </button>
-                        ))}
-                      </div>
-                      <span className="sm:hidden text-[10px] font-bold px-1 text-gray-600">{currentPage}/{totalPages}</span>
-                      <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1 rounded text-gray-500 hover:bg-gray-200 disabled:opacity-30 transition-all">
-                        <IconChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="p-1 rounded text-gray-500 hover:bg-gray-200 disabled:opacity-30 transition-all">
-                        <IconChevronsRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
 
               {isAdmin && (
-                <div className="mx-3 mt-3 mb-1 sm:mx-4 sm:mt-4 sm:mb-2 flex items-center justify-between bg-yellow-50/80 border border-yellow-200 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl shadow-sm flex-shrink-0">
+                <div className="mx-4 mt-4 mb-1 sm:mx-5 sm:mt-5 sm:mb-2 flex items-center justify-between bg-yellow-50/80 border border-yellow-200 px-4 py-2 sm:px-5 sm:py-3 rounded-xl shadow-sm flex-shrink-0">
                   <div className="text-xs sm:text-sm text-yellow-800 flex items-center gap-1.5 sm:gap-2">
-                    <IconShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">Editing Mode</span>
+                    <IconShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="font-bold">Edit Mode Active</span>
                   </div>
                   <button 
                     onClick={() => {
                       setEditingProduct({ name: '', category: safeCategories[0] || 'Default', images: [], colors: [], sizes: [], description: '', shippingLocation: 'In Stock (Phnom Penh)' });
                       setSaveError(null);
                     }}
-                    className="bg-gray-900 hover:bg-black text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-md transition-all"
+                    className="bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-md transition-all"
                   >
-                    <IconPlus className="w-3.5 h-3.5" />
-                    Upload
+                    <IconPlus className="w-4 h-4" />
+                    Upload Item
                   </button>
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto no-scrollbar p-3 sm:p-4 pb-20 [-webkit-overflow-scrolling:touch]">
+              <div className="flex-1 overflow-y-auto no-scrollbar p-4 sm:p-5 pb-32 lg:pb-10 [-webkit-overflow-scrolling:touch]">
                 {currentProducts.length === 0 ? (
-                  <div className="rounded-2xl p-10 sm:p-16 text-center text-gray-400 mt-4 border border-dashed border-gray-200">
-                    <IconImage className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 text-gray-200" />
+                  <div className="rounded-3xl p-12 sm:p-20 text-center text-gray-400 mt-6 border-2 border-dashed border-gray-100">
+                    <IconImage className="w-16 h-16 mx-auto mb-4 text-gray-200" />
                     <p className="text-sm sm:text-base font-medium text-gray-500">
                       {products.length === 0 ? "No items available." : "No matching items found."}
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
-                    {currentProducts.map((product) => (
-                      <div key={product.id} onClick={() => { setActiveProduct(product); setActiveImageIndex(0); }} className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 relative">
-                        {isAdmin && (
-                          <div className="absolute top-2 right-2 z-10 flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => { e.stopPropagation(); setEditingProduct(product); setSaveError(null); }} className="bg-white/90 hover:bg-white text-gray-700 p-1.5 sm:p-2 rounded-md shadow-md backdrop-blur-sm">
-                              <IconEdit3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(product.id); }} className="bg-red-500/90 hover:bg-red-600 text-white p-1.5 sm:p-2 rounded-md shadow-md backdrop-blur-sm">
-                              <IconTrash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            </button>
-                          </div>
-                        )}
-                        <div className="relative aspect-[4/5] w-full bg-gray-50 overflow-hidden">
-                          {/* ✨ 淘宝级优化 4：使用 OptimizedImage 组件替换普通的 img */}
-                          <OptimizedImage 
-                            src={product.mainImage} 
-                            alt={product.name} 
-                            className="w-full h-full object-cover sm:group-hover:scale-105" 
-                          />
-                          {Array.isArray(product.images) && product.images.length > 1 && (
-                            <span className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm flex items-center gap-1">
-                              <IconImage className="w-3 h-3" />
-                              {product.images.length}
-                            </span>
+                  <div className="flex flex-col h-full justify-between">
+                    {/* ✨ 优化3：5级自适应流动网格 */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 content-start">
+                      {currentProducts.map((product) => (
+                        <div key={product.id} onClick={() => { setActiveProduct(product); setActiveImageIndex(0); }} className="group bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col border border-gray-100 relative">
+                          {isAdmin && (
+                            <div className="absolute top-2 right-2 z-10 flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                              <button onClick={(e) => { e.stopPropagation(); setEditingProduct(product); setSaveError(null); }} className="bg-white/90 hover:bg-white text-gray-700 p-1.5 sm:p-2 rounded-md shadow-md backdrop-blur-sm">
+                                <IconEdit3 className="w-4 h-4" />
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(product.id); }} className="bg-red-500/90 hover:bg-red-600 text-white p-1.5 sm:p-2 rounded-md shadow-md backdrop-blur-sm">
+                                <IconTrash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           )}
-                        </div>
-                        <div className="p-2 sm:p-3 flex-1 flex flex-col justify-between">
-                          <div>
-                            <h3 className="text-xs sm:text-sm font-bold text-gray-900 line-clamp-2 leading-snug">{product.name}</h3>
-                            <div className="mt-1 sm:mt-1.5">
-                              <span className={`inline-block text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md font-medium border ${product.shippingLocation === 'In Stock (Phnom Penh)' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
-                                {product.shippingLocation === 'In Stock (Phnom Penh)' ? '🚀 In Stock (Phnom Penh)' : '✈️ Ships from China (10 Days)'}
+                          <div className="relative aspect-[4/5] w-full bg-gray-50 overflow-hidden">
+                            <OptimizedImage 
+                              src={product.mainImage} 
+                              alt={product.name} 
+                              className="w-full h-full object-cover sm:group-hover:scale-105" 
+                            />
+                            {Array.isArray(product.images) && product.images.length > 1 && (
+                              <span className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] sm:text-xs px-2 py-1 rounded backdrop-blur-sm flex items-center gap-1">
+                                <IconImage className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                {product.images.length}
                               </span>
-                            </div>
-                            <div className="mt-1.5 sm:mt-2 flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-1.5 text-[10px] sm:text-xs text-gray-500">
-                              {product.colors && (
-                                <span className="bg-gray-50 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded border border-gray-100 truncate max-w-full">
-                                  Color: {renderTags(product.colors)}
+                            )}
+                          </div>
+                          <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                              <h3 className="text-xs sm:text-sm font-bold text-gray-900 line-clamp-2 leading-snug">{product.name}</h3>
+                              <div className="mt-2">
+                                <span className={`inline-block text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md font-medium border ${product.shippingLocation === 'In Stock (Phnom Penh)' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
+                                  {product.shippingLocation === 'In Stock (Phnom Penh)' ? '🚀 In Stock (Phnom Penh)' : '✈️ Send from China (10 Days)'}
                                 </span>
-                              )}
+                              </div>
+                              <div className="mt-2 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap text-[10px] sm:text-xs text-gray-500">
+                                {product.colors && (
+                                  <span className="bg-gray-50 px-2 py-1 rounded border border-gray-100 truncate max-w-full">
+                                    Color: {renderTags(product.colors)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
+
+              {totalPages > 1 && (
+                <div className="fixed bottom-6 lg:bottom-8 left-1/2 transform -translate-x-1/2 z-40 pointer-events-auto">
+                  <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur-xl border border-gray-200 p-1.5 sm:p-2 rounded-full shadow-[0_20px_50px_-10px_rgba(0,0,0,0.3)]">
+                    <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-all">
+                      <IconChevronsLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-all">
+                      <IconChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                    
+                    <div className="flex items-center px-1 sm:px-2 gap-1 sm:gap-1.5">
+                      {getPageNumbers().map(pageNum => (
+                        <button key={pageNum} onClick={() => setCurrentPage(pageNum)} className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-xs sm:text-sm font-bold transition-all ${currentPage === pageNum ? 'bg-gray-900 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
+                          {pageNum}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-all">
+                      <IconChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                    <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-all">
+                      <IconChevronsRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </main>
           </div>
 
-          {/* Detail View Modal */}
+          {/* ✨ 优化1：弹窗在 iPad (md) 变为垂直排布，桌面 (lg) 才水平排布，极大优化 iPad 体验 */}
           {activeProduct && (
-            <div className="fixed inset-0 z-[60] flex items-start md:items-center justify-center bg-black/95 backdrop-blur-md animate-fade-in overflow-y-auto [-webkit-overflow-scrolling:touch] p-0 md:p-6">
-              <button onClick={() => setActiveProduct(null)} className="fixed top-3 right-3 sm:top-4 sm:right-4 z-[70] bg-black/50 hover:bg-black/70 text-white p-2.5 rounded-full transition-all backdrop-blur-sm">
+            <div className="fixed inset-0 z-[60] flex items-start lg:items-center justify-center bg-black/95 backdrop-blur-md animate-fade-in overflow-y-auto [-webkit-overflow-scrolling:touch] p-0 lg:p-8">
+              <button onClick={() => setActiveProduct(null)} className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[70] bg-black/50 hover:bg-black/80 text-white p-3 sm:p-3.5 rounded-full transition-all backdrop-blur-sm border border-white/10">
                 <IconX className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
-              <div className="bg-white md:rounded-2xl w-full md:max-h-[90vh] max-w-6xl flex flex-col md:flex-row shadow-2xl relative min-h-screen md:min-h-0 overflow-hidden">
-                <div className="w-full md:w-2/3 flex flex-col bg-gray-900 flex-shrink-0 md:flex-shrink">
-                  <div className="w-full aspect-[4/5] sm:aspect-square md:aspect-auto md:flex-1 md:min-h-[50vh] flex items-center justify-center p-0 relative bg-gray-900">
+              <div className="bg-white lg:rounded-3xl w-full lg:max-h-[90vh] max-w-6xl flex flex-col lg:flex-row shadow-2xl relative min-h-screen lg:min-h-0 overflow-hidden">
+                <div className="w-full lg:w-[55%] flex flex-col bg-gray-900 flex-shrink-0 lg:flex-shrink">
+                  <div className="w-full aspect-square lg:aspect-auto lg:flex-1 lg:min-h-[50vh] flex items-center justify-center p-0 relative bg-gray-900">
                     <OptimizedImage 
                       src={(Array.isArray(activeProduct.images) && activeProduct.images[activeImageIndex]) || activeProduct.mainImage} 
                       alt="Product Image" 
-                      className="w-full h-full object-contain md:max-h-[80vh]" 
+                      className="w-full h-full object-contain lg:max-h-[85vh]" 
                     />
                   </div>
                   {Array.isArray(activeProduct.images) && activeProduct.images.length > 1 && (
-                    <div className="bg-gray-900 p-3 sm:p-4 overflow-x-auto flex gap-2 sm:gap-3 border-t border-gray-800 no-scrollbar">
+                    <div className="bg-gray-900 p-4 sm:p-5 overflow-x-auto flex gap-3 border-t border-gray-800 no-scrollbar">
                       {activeProduct.images.map((imgUrl, idx) => (
-                        <button key={idx} onClick={() => setActiveImageIndex(idx)} className={`relative aspect-square w-14 sm:w-16 md:w-20 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${activeImageIndex === idx ? 'border-white scale-105 shadow-lg opacity-100' : 'border-transparent opacity-50 hover:opacity-100'}`}>
+                        <button key={idx} onClick={() => setActiveImageIndex(idx)} className={`relative aspect-square w-16 sm:w-20 lg:w-24 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${activeImageIndex === idx ? 'border-white scale-105 shadow-xl opacity-100' : 'border-transparent opacity-50 hover:opacity-100'}`}>
                           <OptimizedImage src={imgUrl} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-                <div className="w-full md:w-1/3 p-5 sm:p-6 md:p-8 flex flex-col bg-white md:overflow-y-auto pb-24 md:pb-8">
+                <div className="w-full lg:w-[45%] p-6 sm:p-8 lg:p-10 flex flex-col bg-white lg:overflow-y-auto pb-24 lg:pb-10">
                   <div>
-                    <span className="inline-block bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full font-medium mb-3">{activeProduct.category}</span>
-                    <h2 className="text-xl md:text-2xl font-bold text-gray-900 leading-snug mb-3">{activeProduct.name}</h2>
-                    <div className="mb-6">
-                      <span className={`inline-block text-xs px-2.5 py-1 rounded-md font-bold border ${activeProduct.shippingLocation === 'In Stock (Phnom Penh)' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-                        {activeProduct.shippingLocation === 'In Stock (Phnom Penh)' ? '🚀 In Stock (Phnom Penh)' : '✈️ Ships from China (approx. 10 days)'}
+                    <span className="inline-block bg-gray-100 text-gray-600 text-xs px-3 py-1.5 rounded-full font-bold tracking-wide mb-4">{activeProduct.category}</span>
+                    <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 leading-snug mb-4">{activeProduct.name}</h2>
+                    <div className="mb-8">
+                      <span className={`inline-block text-xs px-3 py-1.5 rounded-lg font-bold border ${activeProduct.shippingLocation === 'In Stock (Phnom Penh)' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                        {activeProduct.shippingLocation === 'In Stock (Phnom Penh)' ? '🚀 In Stock (Phnom Penh)' : '✈️ Send from China (approx. 10 days)'}
                       </span>
                     </div>
                     {Array.isArray(activeProduct.colors) && activeProduct.colors.length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="text-sm font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2">Available Colors</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {activeProduct.colors.map((color, idx) => <span key={idx} className="bg-gray-50 text-gray-800 text-sm px-4 py-2 rounded-lg border border-gray-200">{color}</span>)}
+                      <div className="mb-8">
+                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Available Colors</h3>
+                        <div className="flex flex-wrap gap-2.5">
+                          {activeProduct.colors.map((color, idx) => <span key={idx} className="bg-gray-50 text-gray-800 text-sm font-medium px-4 py-2 rounded-xl border border-gray-200">{color}</span>)}
                         </div>
                       </div>
                     )}
                     {Array.isArray(activeProduct.sizes) && activeProduct.sizes.length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="text-sm font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2">Available Sizes</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {activeProduct.sizes.map((size, idx) => <span key={idx} className="bg-gray-50 text-gray-800 text-sm px-4 py-2 rounded-lg border border-gray-200 font-mono">{size}</span>)}
+                      <div className="mb-8">
+                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Available Sizes</h3>
+                        <div className="flex flex-wrap gap-2.5">
+                          {activeProduct.sizes.map((size, idx) => <span key={idx} className="bg-white text-gray-900 text-sm font-bold px-5 py-2.5 rounded-xl border-2 border-gray-200 shadow-sm">{size}</span>)}
                         </div>
                       </div>
                     )}
                     {activeProduct.description && (
-                      <div className="mb-6">
-                        <h3 className="text-sm font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2">Product Details</h3>
-                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 p-4 rounded-xl">{activeProduct.description}</p>
+                      <div className="mb-8">
+                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Product Details</h3>
+                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 p-5 rounded-2xl">{activeProduct.description}</p>
                       </div>
                     )}
                   </div>
@@ -949,27 +957,27 @@
             </div>
           )}
 
-          {/* Upload / Edit Modal */}
+          {/* ✨ 优化2：表单在手机上单列显示，避免内容挤压 */}
           {editingProduct && (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onPaste={handlePaste}>
-              <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl relative">
-                <div className="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
-                  <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
-                    <IconEdit3 className="w-5 h-5" />
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md" onPaste={handlePaste}>
+              <div className="bg-white sm:rounded-3xl w-full max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col shadow-2xl relative">
+                <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 sm:rounded-t-3xl pt-12 sm:pt-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <IconEdit3 className="w-5 h-5 sm:w-6 sm:h-6" />
                     {editingProduct.id ? 'Edit Item' : 'Upload New Item'}
                   </h2>
-                  <button onClick={closeEditModal} className="text-gray-400 hover:text-gray-700 bg-white p-1.5 rounded-md shadow-sm border border-gray-200"><IconX className="w-4 h-4 sm:w-5 sm:h-5" /></button>
+                  <button onClick={closeEditModal} className="text-gray-400 hover:text-gray-900 bg-white p-2 rounded-xl shadow-sm border border-gray-200 transition-colors"><IconX className="w-5 h-5" /></button>
                 </div>
-                <div className="p-4 sm:p-6 overflow-y-auto flex-1 relative">
+                <div className="p-4 sm:p-8 overflow-y-auto flex-1 relative">
                   {isUploadingImage && (
-                    <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] z-20 flex flex-col items-center justify-center text-gray-900 rounded-xl">
-                       <IconLoader className="w-8 h-8 animate-spin mb-2" />
-                       <span className="font-bold text-sm mt-2">Uploading to Supabase Storage...</span>
+                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-gray-900 rounded-xl">
+                       <IconLoader className="w-10 h-10 animate-spin mb-3 text-emerald-500" />
+                       <span className="font-bold text-sm">Uploading to Cloud...</span>
                     </div>
                   )}
 
                   {saveError && (
-                    <div className="mb-6 bg-red-50 border border-red-200 p-4 rounded-xl text-red-700 shadow-sm">
+                    <div className="mb-6 bg-red-50 border border-red-200 p-4 rounded-2xl text-red-700 shadow-sm">
                       <h3 className="text-sm font-bold mb-2 flex items-center gap-2"><IconAlertTriangle className="w-4 h-4" />Upload Error</h3>
                       <p className="text-xs mb-2 leading-relaxed opacity-90">{saveError}</p>
                     </div>
@@ -982,84 +990,77 @@
                     const sizeStr = formData.get('sizes') || '';
                     if (!editingProduct.images || editingProduct.images.length === 0) { showToast('Please upload at least one image.'); return; }
                     handleSaveProduct({...editingProduct, name: formData.get('name'), category: formData.get('category'), shippingLocation: formData.get('shippingLocation'), colors: colorStr.split(',').map(s => s.trim()).filter(Boolean), sizes: sizeStr.split(',').map(s => s.trim()).filter(Boolean), description: formData.get('description')});
-                  }} className="space-y-4 sm:space-y-6 text-sm">
-                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-4 sm:p-5 relative">
-                      <h3 className="text-xs sm:text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                        <IconImage className="w-4 h-4" /> Image Manager (Use arrows to set Cover)
+                  }} className="space-y-5 sm:space-y-6 text-sm">
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-5 sm:p-6 relative">
+                      <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                        <IconImage className="w-5 h-5" /> Image Manager
                       </h3>
                       {Array.isArray(editingProduct.images) && editingProduct.images.length > 0 && (
-                        <div className="flex flex-wrap gap-2 sm:gap-3 mb-4">
+                        <div className="flex flex-wrap gap-3 mb-5">
                           {editingProduct.images.map((img, idx) => (
-                            <div key={idx} className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border border-gray-200 bg-white shadow-sm">
+                            <div key={idx} className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
                               <OptimizedImage src={img} alt={`Upload ${idx}`} className="w-full h-full object-cover" />
-                              
-                              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1 pt-3 flex justify-center items-center gap-2 opacity-100">
+                              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1 pt-4 flex justify-center items-center gap-2 opacity-100">
                                 {idx > 0 ? (
-                                  <button type="button" onClick={() => moveImage(idx, 'left')} className="text-white hover:scale-125 transition-transform p-0.5"><IconChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" /></button>
-                                ) : <div className="w-5"></div>}
-                                
-                                <button type="button" onClick={() => removeImage(idx)} className="text-red-400 hover:scale-125 transition-transform p-0.5"><IconTrash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
-                                
+                                  <button type="button" onClick={() => moveImage(idx, 'left')} className="text-white hover:scale-125 transition-transform p-1"><IconChevronLeft className="w-5 h-5" /></button>
+                                ) : <div className="w-7"></div>}
+                                <button type="button" onClick={() => removeImage(idx)} className="text-red-400 hover:scale-125 transition-transform p-1"><IconTrash2 className="w-4 h-4" /></button>
                                 {idx < editingProduct.images.length - 1 ? (
-                                  <button type="button" onClick={() => moveImage(idx, 'right')} className="text-white hover:scale-125 transition-transform p-0.5"><IconChevronRight className="w-4 h-4 sm:w-5 sm:h-5" /></button>
-                                ) : <div className="w-5"></div>}
+                                  <button type="button" onClick={() => moveImage(idx, 'right')} className="text-white hover:scale-125 transition-transform p-1"><IconChevronRight className="w-5 h-5" /></button>
+                                ) : <div className="w-7"></div>}
                               </div>
-
-                              {idx === 0 && <span className="absolute top-1 left-1 bg-emerald-600 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-wider">COVER</span>}
+                              {idx === 0 && <span className="absolute top-1.5 left-1.5 bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded shadow-sm font-bold tracking-wider">COVER</span>}
                             </div>
                           ))}
                         </div>
                       )}
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         <input type="file" multiple accept="image/*" ref={fileInputRef} className="hidden" onChange={(e) => handleImageFiles(e.target.files)} />
                         <input type="file" webkitdirectory="true" directory="true" multiple ref={folderInputRef} className="hidden" onChange={(e) => handleImageFiles(e.target.files)} />
-                        <button type="button" disabled={isUploadingImage} onClick={() => fileInputRef.current?.click()} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1.5 hover:bg-gray-100 transition-colors text-[10px] sm:text-xs font-medium disabled:opacity-50"><IconImagePlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Select Files</button>
-                        <button type="button" disabled={isUploadingImage} onClick={() => folderInputRef.current?.click()} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg flex items-center gap-1.5 hover:bg-gray-100 transition-colors text-[10px] sm:text-xs font-medium disabled:opacity-50"><IconFolderUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Upload Folder</button>
+                        <button type="button" disabled={isUploadingImage} onClick={() => fileInputRef.current?.click()} className="flex-1 bg-white border border-gray-300 text-gray-700 px-4 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors font-bold disabled:opacity-50 shadow-sm"><IconImagePlus className="w-5 h-5" /> Select Files</button>
+                        <button type="button" disabled={isUploadingImage} onClick={() => folderInputRef.current?.click()} className="flex-1 bg-white border border-gray-300 text-gray-700 px-4 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors font-bold disabled:opacity-50 shadow-sm"><IconFolderUp className="w-5 h-5" /> Upload Folder</button>
                       </div>
-                      <p className="mt-3 text-[10px] sm:text-xs text-gray-500 flex items-center gap-1.5 bg-yellow-50 p-2 rounded-md border border-yellow-100 w-full">
-                        <span className="font-semibold text-yellow-700 hidden sm:inline">Tip:</span> 
-                        <span>Use <kbd className="bg-white border border-gray-200 px-1 rounded shadow-sm font-mono text-gray-600">Ctrl+V</kbd> to paste images, or use the <strong>Left/Right arrows</strong> on the images above to change their order!</span>
-                      </p>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">Product Name *</label>
-                      <input name="name" defaultValue={editingProduct.name} required className="w-full bg-white border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:ring-1 focus:ring-gray-900 focus:outline-none transition-all shadow-sm" />
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Product Name *</label>
+                      <input name="name" defaultValue={editingProduct.name} required className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all shadow-sm font-medium" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    {/* ✨ 手机端1列，电脑端2列 */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1.5">Category *</label>
-                        <select name="category" defaultValue={editingProduct.category || safeCategories[0]} className="w-full bg-white border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:ring-1 focus:ring-gray-900 focus:outline-none shadow-sm">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Category *</label>
+                        <select name="category" defaultValue={editingProduct.category || safeCategories[0]} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none shadow-sm font-medium">
                           {safeCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1.5">Shipping From *</label>
-                        <select name="shippingLocation" defaultValue={editingProduct.shippingLocation || 'In Stock (Phnom Penh)'} className="w-full bg-white border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:ring-1 focus:ring-gray-900 focus:outline-none shadow-sm text-xs sm:text-sm">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Shipping From *</label>
+                        <select name="shippingLocation" defaultValue={editingProduct.shippingLocation || 'In Stock (Phnom Penh)'} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none shadow-sm font-medium">
                           <option value="In Stock (Phnom Penh)">In Stock (Phnom Penh)</option>
-                          <option value="Ships from China (10 Days Delivery)">Ships from China (approx. 10 days)</option>
+                          <option value="Send from China (approx. 10 days)">Send from China (approx. 10 days)</option>
                         </select>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1.5">Colors (comma separated)</label>
-                        <input name="colors" defaultValue={Array.isArray(editingProduct.colors) ? editingProduct.colors.join(', ') : editingProduct.colors} placeholder="Black, White" className="w-full bg-white border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:ring-1 focus:ring-gray-900 focus:outline-none shadow-sm" />
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Colors (comma separated)</label>
+                        <input name="colors" defaultValue={Array.isArray(editingProduct.colors) ? editingProduct.colors.join(', ') : editingProduct.colors} placeholder="e.g. Black, White" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none shadow-sm font-medium" />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1.5">Sizes (comma separated)</label>
-                        <input name="sizes" defaultValue={Array.isArray(editingProduct.sizes) ? editingProduct.sizes.join(', ') : editingProduct.sizes} placeholder="S, M, L" className="w-full bg-white border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:ring-1 focus:ring-gray-900 focus:outline-none shadow-sm" />
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Sizes (comma separated)</label>
+                        <input name="sizes" defaultValue={Array.isArray(editingProduct.sizes) ? editingProduct.sizes.join(', ') : editingProduct.sizes} placeholder="e.g. S, M, L" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none shadow-sm font-medium" />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">Description</label>
-                      <textarea name="description" rows="3" defaultValue={editingProduct.description} className="w-full bg-white border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:ring-1 focus:ring-gray-900 focus:outline-none shadow-sm resize-none" />
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Description</label>
+                      <textarea name="description" rows="4" defaultValue={editingProduct.description} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none shadow-sm resize-none font-medium leading-relaxed" />
                     </div>
                   </form>
                 </div>
-                <div className="p-4 sm:p-5 border-t border-gray-100 flex gap-3 bg-gray-50 rounded-b-2xl">
-                  <button type="button" onClick={closeEditModal} className="flex-1 bg-white border border-gray-300 py-2.5 sm:py-3 rounded-xl text-gray-700 font-bold hover:bg-gray-100 transition-colors shadow-sm">Cancel</button>
-                  <button form="productForm" type="submit" disabled={isUploadingImage} className="flex-1 bg-gray-900 hover:bg-black text-white py-2.5 sm:py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    {isUploadingImage ? 'Processing...' : 'Save Item'}
+                <div className="p-4 sm:p-6 border-t border-gray-100 flex gap-4 bg-white sm:rounded-b-3xl pb-8 sm:pb-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
+                  <button type="button" onClick={closeEditModal} className="flex-1 bg-gray-100 py-3.5 sm:py-4 rounded-xl text-gray-700 font-bold hover:bg-gray-200 transition-colors">Cancel</button>
+                  <button form="productForm" type="submit" disabled={isUploadingImage} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 sm:py-4 rounded-xl font-bold shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50 disabled:shadow-none">
+                    {isUploadingImage ? 'Processing...' : 'Save Product'}
                   </button>
                 </div>
               </div>
@@ -1068,21 +1069,21 @@
 
           {/* Edit Categories Modal */}
           {isCategoryEditOpen && (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-              <div className="bg-white rounded-2xl w-full max-w-sm p-5 sm:p-6 shadow-2xl relative">
-                <button onClick={() => setIsCategoryEditOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><IconX className="w-5 h-5" /></button>
-                <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-4">Manage Categories</h2>
-                <div className="space-y-2 mb-4 max-h-48 sm:max-h-60 overflow-y-auto pr-1">
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <div className="bg-white rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative">
+                <button onClick={() => setIsCategoryEditOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 bg-gray-100 p-2 rounded-xl"><IconX className="w-5 h-5" /></button>
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Manage Categories</h2>
+                <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2">
                   {safeCategories.map((cat, index) => (
-                    <div key={index} className="flex justify-between items-center bg-gray-50 p-2 sm:p-2.5 rounded-lg border border-gray-200">
-                      <span className="text-xs sm:text-sm font-medium">{cat}</span>
-                      <button onClick={() => { const newList = [...safeCategories]; newList.splice(index, 1); setDynamicCategories(newList); handleSaveCategories(newList); }} className="text-red-500 hover:text-red-700 p-1"><IconTrash2 className="w-4 h-4" /></button>
+                    <div key={index} className="flex justify-between items-center bg-gray-50 p-3 sm:p-4 rounded-2xl border border-gray-200">
+                      <span className="text-sm font-bold text-gray-700">{cat}</span>
+                      <button onClick={() => { const newList = [...safeCategories]; newList.splice(index, 1); setDynamicCategories(newList); handleSaveCategories(newList); }} className="text-red-400 hover:text-red-600 bg-red-50 p-2 rounded-lg"><IconTrash2 className="w-4 h-4" /></button>
                     </div>
                   ))}
                 </div>
-                <form onSubmit={(e) => { e.preventDefault(); const newCat = e.target.newCategory.value.trim(); if (newCat && !safeCategories.includes(newCat)) { const newList = [...safeCategories, newCat]; setDynamicCategories(newList); handleSaveCategories(newList); e.target.reset(); } }} className="flex gap-2">
-                  <input name="newCategory" placeholder="Enter new category name..." required className="flex-1 bg-white border border-gray-300 rounded-lg p-2 sm:p-2.5 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-gray-900" />
-                  <button type="submit" className="bg-gray-900 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold">Add</button>
+                <form onSubmit={(e) => { e.preventDefault(); const newCat = e.target.newCategory.value.trim(); if (newCat && !safeCategories.includes(newCat)) { const newList = [...safeCategories, newCat]; setDynamicCategories(newList); handleSaveCategories(newList); e.target.reset(); } }} className="flex gap-3">
+                  <input name="newCategory" placeholder="New category name..." required className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <button type="submit" className="bg-emerald-600 text-white px-6 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/30">Add</button>
                 </form>
               </div>
             </div>
@@ -1090,15 +1091,15 @@
 
           {/* Edit Header Banner Modal */}
           {isShopEditOpen && (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-              <div className="bg-white rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-2xl relative">
-                <button onClick={() => setIsShopEditOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><IconX className="w-5 h-5" /></button>
-                <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-4">Edit Store Banner</h2>
-                <form onSubmit={(e) => { e.preventDefault(); const formData = new FormData(e.target); const newInfo = { name: formData.get('name'), notice: formData.get('notice'), banner: formData.get('banner') }; handleSaveShopInfo(newInfo); }} className="space-y-4 text-xs sm:text-sm">
-                  <div><label className="block font-bold text-gray-700 mb-1">Gallery Name</label><input name="name" defaultValue={shopInfo.name} required className="w-full border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:outline-none focus:ring-1 focus:ring-gray-900" /></div>
-                  <div><label className="block font-bold text-gray-700 mb-1">Subtitle / Notice</label><input name="notice" defaultValue={shopInfo.notice} required className="w-full border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:outline-none focus:ring-1 focus:ring-gray-900" /></div>
-                  <div><label className="block font-bold text-gray-700 mb-1">Background Image (URL)</label><input name="banner" defaultValue={shopInfo.banner} required className="w-full border border-gray-300 rounded-lg p-2.5 sm:p-3 focus:outline-none focus:ring-1 focus:ring-gray-900" /></div>
-                  <button type="submit" className="w-full bg-gray-900 text-white py-2.5 sm:py-3 rounded-xl font-bold mt-2">Save Changes</button>
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <div className="bg-white rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative">
+                <button onClick={() => setIsShopEditOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 bg-gray-100 p-2 rounded-xl"><IconX className="w-5 h-5" /></button>
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Edit Store Banner</h2>
+                <form onSubmit={(e) => { e.preventDefault(); const formData = new FormData(e.target); const newInfo = { name: formData.get('name'), notice: formData.get('notice'), banner: formData.get('banner') }; handleSaveShopInfo(newInfo); }} className="space-y-5 text-sm">
+                  <div><label className="block font-bold text-gray-500 uppercase tracking-wider mb-2 text-xs">Gallery Name</label><input name="name" defaultValue={shopInfo.name} required className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-gray-900" /></div>
+                  <div><label className="block font-bold text-gray-500 uppercase tracking-wider mb-2 text-xs">Subtitle / Notice</label><input name="notice" defaultValue={shopInfo.notice} required className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-700" /></div>
+                  <div><label className="block font-bold text-gray-500 uppercase tracking-wider mb-2 text-xs">Background Image (URL)</label><input name="banner" defaultValue={shopInfo.banner} required className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-xs text-gray-600" /></div>
+                  <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold mt-4 shadow-lg shadow-emerald-500/30">Save Changes</button>
                 </form>
               </div>
             </div>
@@ -1106,14 +1107,17 @@
 
           {/* Admin Verification Modal */}
           {showAdminPassModal && (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-              <div className="bg-white rounded-2xl w-full max-w-sm p-5 sm:p-6 shadow-2xl relative">
-                <button onClick={() => setShowAdminPassModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><IconX className="w-5 h-5" /></button>
-                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-6">Admin Verification</h3>
-                {saveError && <div className="mb-4 text-xs sm:text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">{saveError}</div>}
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <div className="bg-white rounded-3xl w-full max-w-sm p-6 sm:p-8 shadow-2xl relative">
+                <button onClick={() => setShowAdminPassModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 bg-gray-100 p-2 rounded-xl"><IconX className="w-5 h-5" /></button>
+                <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mb-6">
+                  <IconShield className="w-8 h-8 text-emerald-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-6">Admin Login</h3>
+                {saveError && <div className="mb-5 text-sm text-red-700 font-medium bg-red-50 p-3 rounded-xl border border-red-200">{saveError}</div>}
                 <form onSubmit={handleVerifyAdminPass} className="space-y-4">
-                  <input type="password" placeholder="Enter password" value={adminPasswordInput} onChange={(e) => setAdminPasswordInput(e.target.value)} className="w-full border border-gray-300 rounded-xl p-2.5 sm:p-3 text-sm focus:outline-none focus:ring-1 focus:ring-gray-900" />
-                  <button type="submit" className="w-full bg-gray-900 text-white py-2.5 sm:py-3 rounded-xl font-bold text-sm">Unlock</button>
+                  <input type="password" placeholder="Enter password" value={adminPasswordInput} onChange={(e) => setAdminPasswordInput(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-medium tracking-widest focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-center" />
+                  <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30">Unlock Access</button>
                 </form>
               </div>
             </div>
